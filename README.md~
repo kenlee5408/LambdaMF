@@ -9,5 +9,6 @@ run experiments:
 	sh run_experiment.sh
 
 general usage:
-	./LambdaMF -train [training data] -test [testing data] -e [eta] -L2 [L2 regularization coefficient(optional, default=0)] -n [number of iterations] -a [alpha] -train_logfile [log filename(optional)] -test_logfile [log filename(optional)]
+	./LambdaMF -train [training data] -test [testing data] -e [eta] -L2 [L2 regularization coefficient] -n [number of iterations] -a [alpha] -train_logfile [log filename(optional)] -test_logfile [log filename(optional)]
 
+default:
