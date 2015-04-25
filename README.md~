@@ -9,7 +9,7 @@ user1 item1 rating1
 
 user2 item2 rating2
 
-...
+... ... ...
 
 //////////////////////////////////////////////////
 
@@ -19,23 +19,17 @@ place the MovieLens100K dataset(u.data) and Netflix dataset(training_set/) in th
 
 	sh prepare.sh
 
-//////////////////////////////////////////////////
-
 run experiments of MSE regularization in paper:
 
 	sh run_experiment.sh	
 	
-// testing log file will be in log/
-
-//////////////////////////////////////////////////
+log file of testing dataset will be in log/
 
 general usage:
 
 	./LambdaMF -train [training data] -test [testing data] -e [eta] -L2 [L2 regularization coefficient(optional, default=0)] -n [number of iterations] -a [alpha] -train_logfile [log filename(optional)] -test_logfile [log filename(optional)]
 
-//////////////////////////////////////////////////
-
-The parameter used in paper:
+The parameters used in paper:
 
 MSE regularization: ./LambdaMF -train . -test . -a 0.5 -e 0.001 -n 250
 
