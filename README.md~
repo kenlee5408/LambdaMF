@@ -18,6 +18,7 @@ compile and produce dataset:
 place the MovieLens100K dataset(u.data) and Netflix dataset(training_set/) in the same directory and run:
 
 	sh prepare.sh
+	mkdir log
 
 run experiments of MSE regularization in paper:
 
