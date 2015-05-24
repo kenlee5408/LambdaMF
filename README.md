@@ -26,21 +26,33 @@ download Netflix data here (we are not responsible for this link):
 place the MovieLens100K dataset(u.data) and Netflix dataset(training_set/) in the same directory and run:
 
 	sh prepare.sh
-	mkdir log
+	mkdir MSElog
+	mkdir L2log
+	mkdir NOlog
 
 run experiments of MSE regularization in paper:
 
-	sh run_experiment.sh	
+	sh run_MSE_experiment.sh	
 
-log file of testing dataset will be in log/
+run experiments of L2 regularization in paper:
+
+	sh run_L2_experiment.sh	
+
+run experiments of NO regularization in paper(only norm reported):
+
+	sh run_no_regularization_experiment.sh	
+
+log file of training/testing/model norm will be in MSElog/ , L2log/ , NOlog/
 
 you can use tail (in linux environment) command to see the result, for example:
 
-	tail log/m.test.50.0
+	tail MSElog/m.test.50.0
 
 general usage:
 
-	./LambdaMF -train [training data] -test [testing data] -e [eta] -L2 [L2 regularization coefficient(optional, default=0)] -n [number of iterations] -a [alpha] -train_logfile [log filename(optional)] -test_logfile [log filename(optional)]
+	./LambdaMF -train [training data] -test [testing data] -e [eta] -L2 [L2 regularization coefficient(optional, default=0)] -n [number of iterations] -a [alpha] -train_logfile [log filename(optional)] -test_logfile [log filename(optional)] -norm [max of model norm log file(optional)]
+
+If you want to test LambdaMF on other datasets, please set the right USER_N(number of users) and ITEM_N(number of items) in LambdaMF.h and recompile it.
 
 The parameters used in paper:
 

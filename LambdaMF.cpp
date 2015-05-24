@@ -12,15 +12,14 @@
 #include<omp.h>
 #include<iterator>
 #include<queue>
-
-#define USER_N 480190
-#define ITEM_N 17771
-#define D 100
+#include"LambdaMF.h"
 
 char train_filename[100];
 char test_filename[100];
 char *train_logfile = NULL;
 char *test_logfile = NULL;
+FILE *norm_fp = NULL;
+char *norm_file = NULL;
 
 double ETA;
 double LAMBDA = 0;
@@ -28,8 +27,8 @@ double ALPHA = 0.1;
 int n = 1;
 
 // hard coded
-double U[480190][D];
-double V[17771][D];
+double U[USER_N][D];
+double V[ITEM_N][D];
 
 using namespace std;
 
@@ -100,9 +99,21 @@ void readInput(int argc,char* argv[]){
 			train_logfile = argv[i+1];
 		}else if(!strcmp(argv[i],"-test_logfile")){
 			test_logfile = argv[i+1];
+		}else if(!strcmp(argv[i],"-norm")){
+			norm_fp = fopen(argv[i+1],"w");
+			norm_file = argv[i+1];
 		}
 	}
 	printf("train file: %s\ntest file: %s\nETA: %lf\nALPHA: %lf\niteration: %d\n",train_filename,test_filename,ETA,ALPHA,n);
+	if(LAMBDA!=0)
+		printf("use L2 regularization, coefficient = %lf\n",LAMBDA);
+	if(train_logfile!=NULL)
+		printf("train logfile: %s\n",train_logfile);
+	if(test_logfile!=NULL)
+		printf("test logfile: %s\n",test_logfile);
+	if(norm_file!=NULL)
+		printf("model norm file: %s\n",norm_file);
+	puts("");
 }
 void initialize(){
 	srand(time(NULL));
@@ -246,7 +257,8 @@ void updateModel(int iterN){
 	}
 
 	// used for detecting overflow
-	/*if(iterN!=0 && iterN%50==0){
+	//if(iterN!=0 && iterN%50==0){
+	if(norm_fp!=NULL){
 		double normMax = 0;
 		for(int i=0;i<userCount;i++){
 			double temp = norm(U[i]);
@@ -256,8 +268,8 @@ void updateModel(int iterN){
 			double temp = norm(V[i]);
 			normMax = (temp > normMax) ? temp : normMax;
 		}
-		printf("norm max = %lf\n",normMax);
-	}*/
+		fprintf(norm_fp,"%d iteration, norm = %lf\n",iterN,normMax);
+	}
 }
 
 void evaluate(vector<pair<int,double> > usedata[USER_N],int u,double &ndcg){
@@ -295,17 +307,19 @@ int main(int argc, char* argv[]){
 	readInput(argc,argv);
 	initialize();	// set random seed here, initialize U,V
 	
-	printf("reading training data:  %s\n",train_filename);
+	printf("reading training data:  %s...",train_filename);	fflush(stdout);
 	readData(train_filename,false);	// encode user here
+	puts(" done");
 	for(int k=0;k<userCount;k++)
 		for(int m=0;m<data[k].size();m++){
 			itemSeen.insert(data[k][m].first);
 			userSeen[k].insert(data[k][m].first);
 		}
 	//updateModel();	
-	printf("%d users, %d items\n",userCount,itemSeen.size());
-	printf("reading testing data:  %s\n",test_filename);
+	printf("reading testing data:  %s...",test_filename);	fflush(stdout);
 	readData(test_filename,true);	// encode user here
+	puts(" done");
+	printf("%d users, %d items\n",userCount,itemSeen.size());
 	
 	FILE *trainlog = NULL;
 	FILE *testlog = NULL;
@@ -332,6 +346,8 @@ int main(int argc, char* argv[]){
 		double ndcgTrain = 0;
 		double ndcgTest = 0;
 		
+		if(t%50==0)
+			printf("%d/%d iterations done\n",t,n);
 		//if(t!=0 && t%50==0){
 		if(t==n){
 			time(&end);
@@ -343,6 +359,7 @@ int main(int argc, char* argv[]){
 			}
 					
 			if(userCount!=0){
+			//if(t%50==0){
 				ndcgTrain/=userCount;
 				ndcgTest/=userCount;
 				printf("%d iteration, train ndcg@10= %.4lf, test ndcg@10= %.4lf\n",t,ndcgTrain,ndcgTest);
