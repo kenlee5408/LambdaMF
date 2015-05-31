@@ -46,7 +46,7 @@ log file of training/testing/model norm will be in MSElog/ , L2log/ , NOlog/
 
 you can use tail (in linux environment) command to see the result, for example:
 
-	tail MSElog/m.test.50.0
+	tail MSElog/m.test.50.log10
 
 general usage:
 
