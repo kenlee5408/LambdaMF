@@ -1,9 +1,7 @@
 LambdaMF
 A novel collaborative filtering method incorporating lambda.
 
-This implementation optimizes NDCG on linux environment.
-
-The codes are written using C++, python and shell commands.
+This implementation optimizes NDCG
 
 Data format should be:(seperated by space)
 
