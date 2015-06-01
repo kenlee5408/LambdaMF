@@ -29,6 +29,7 @@ place the MovieLens100K dataset(u.data) and Netflix dataset(training_set/) in th
 	mkdir MSElog
 	mkdir L2log
 	mkdir NOlog
+	mkdir log
 
 run experiments of MSE regularization in paper:
 
@@ -42,11 +43,15 @@ run experiments of NO regularization in paper(only norm reported):
 
 	sh run_no_regularization_experiment.sh	
 
-log file of training/testing/model norm will be in MSElog/ , L2log/ , NOlog/
+run experiments of checking the optimization and optimum of LambdaMF with MSE regularization:
 
-you can use tail (in linux environment) command to see the result, for example:
+	sh test_experiment.sh 
 
-	tail MSElog/m.test.50.0
+log file of training, testing, model_norm and convergence will be in MSElog/ , L2log/ , NOlog/ and log/
+
+you can use tail or vim (in linux environment) command to see the result, for example:
+
+	tail MSElog/m.test.50.log10
 
 general usage:
 
