@@ -47,6 +47,8 @@ run experiments of checking the optimization and optimum of LambdaMF with MSE re
 
 	sh test_experiment.sh 
 
+This version testing that NDCG@10 == 1.0 uses C++ internal double precision, so it is more reliable than using the log file. 
+
 log file of training, testing, model_norm and convergence will be in MSElog/ , L2log/ , NOlog/ and log/
 
 you can use tail or vim (in linux environment) command to see the result, for example:
