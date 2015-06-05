@@ -20,24 +20,30 @@ char *train_logfile = NULL;
 char *test_logfile = NULL;
 FILE *norm_fp = NULL;
 char *norm_file = NULL;
+FILE *predict_fp = NULL;
 
-double ETA;
+double ETA = 0.001;
 double LAMBDA = 0;
-double ALPHA = 0.1;
-int n = 1;
+double ALPHA = 0.5;
+int n = 250;
+int VERBOSE = 0;
 
 // hard coded
-double U[USER_N][D];
-double V[ITEM_N][D];
+double** U;//[USER_N][D];
+double** V;//[ITEM_N][D];
 
 using namespace std;
 
 map<int,int> usermap;
-set<int> userSeen[USER_N];
+map<int,int> i_usermap;
+map<int,int> itemmap;
+map<int,int> i_itemmap;
+
 set<int> itemSeen;
 int userCount;
-vector<pair<int,double> > data[USER_N];
-vector<pair<int,double> > testdata[USER_N];
+int itemCount;
+vector<pair<int,double> >* data;
+vector<pair<int,double> >* testdata;
 int totalCount;
 
 inline double sqr(double x){
@@ -102,9 +108,15 @@ void readInput(int argc,char* argv[]){
 		}else if(!strcmp(argv[i],"-norm")){
 			norm_fp = fopen(argv[i+1],"w");
 			norm_file = argv[i+1];
+		}else if(!strcmp(argv[i],"-predict")){
+			predict_fp = fopen(argv[i+1],"w");
+		}else if(!strcmp(argv[i],"-D")){
+			D = atoi(argv[i+1]);
+		}else if(!strcmp(argv[i],"-VERBOSE")){
+			VERBOSE = atoi(argv[i+1]);
 		}
 	}
-	printf("train file: %s\ntest file: %s\nETA: %lf\nALPHA: %lf\niteration: %d\n",train_filename,test_filename,ETA,ALPHA,n);
+	printf("train file: %s\ntest file: %s\nETA: %lf\nALPHA: %lf\niteration: %d\nD: %d\n",train_filename,test_filename,ETA,ALPHA,n,D);
 	if(LAMBDA!=0)
 		printf("use L2 regularization, coefficient = %lf\n",LAMBDA);
 	if(train_logfile!=NULL)
@@ -124,34 +136,66 @@ void initialize(){
 		for(int j=0;j<D;j++)
 			V[i][j] = ((double) rand() / (RAND_MAX)) * 0.1;
 }
-
+void update(FILE* fp){
+	int user, item, rating;
+	while(fscanf(fp,"%d%d%d",&user,&item,&rating)!=EOF){
+		map<int,int>::iterator it;
+		it = usermap.find(user);
+		if(it==usermap.end()){
+			usermap[user] = userCount;
+			//i_usermap[userCount++] = user;
+			userCount++;
+		}
+		it = itemmap.find(item);
+		if(it==itemmap.end()){
+			itemmap[item] = itemCount;
+			//i_itemmap[itemCount++] = item;
+			itemCount++;
+		}
+	}
+}
+void initial_parameter(){
+	FILE* fp = fopen(train_filename,"r");
+	update(fp);
+	fclose(fp);
+	fp = fopen(test_filename,"r");
+	update(fp);
+	fclose(fp);
+	USER_N = userCount;
+	ITEM_N = itemCount;
+	printf("%d users, %d items\n",USER_N,ITEM_N);
+	data = new vector<pair<int,double> >[USER_N];
+	testdata = new vector<pair<int,double> >[USER_N];
+	U = new double*[USER_N];
+	V = new double*[ITEM_N];
+	for(int i=0;i<USER_N;i++)
+		U[i] = new double[D];
+	for(int i=0;i<ITEM_N;i++)
+		V[i] = new double[D];
+}
 void readData(char filename[80],bool isTest){
 	FILE* fp = fopen(filename,"r");
 	int user,item,rating;
+	
 	map<int,int>::iterator it;
 	while(fscanf(fp,"%d%d%d",&user,&item,&rating)!=EOF){
-		it = usermap.find(user);
-		if(it == usermap.end()){
-			usermap[user] = userCount;
-			user = userCount++;
-		}
-		else
-			user = it->second;
+		user = usermap[user];
+		item = itemmap[item];
 		if(isTest)
-			testdata[user].push_back(pair<int,double>(item,double(rating)));
+			testdata[user].push_back(pair<int,double>(itemmap[item],double(rating)));
 		else
-			data[user].push_back(pair<int,double>(item,double(rating)));
+			data[user].push_back(pair<int,double>(itemmap[item],double(rating)));
 	}
 	return;
 }
-double dot(double a[D], double b[D]){
+double dot(double* a, double* b){
 	double temp = 0;
 	for(int i=0;i<D;i++)
 		temp += a[i]*b[i];
 	return temp;
 }
 
-inline double norm(double M[D]){
+inline double norm(double* M){
 	return sqrt(dot(M,M));
 }
 bool found(int item,vector<int> arr){
@@ -272,7 +316,7 @@ void updateModel(int iterN){
 	}
 }
 
-void evaluate(vector<pair<int,double> > usedata[USER_N],int u,double &ndcg){
+void evaluate(vector<pair<int,double> > *usedata,int u,double &ndcg){
 	vector<Item> candidate;
 	for(int i=0;i<usedata[u].size();i++)
 		candidate.push_back(Item(-1,usedata[u][i].first,dot(U[u],V[usedata[u][i].first]),usedata[u][i].second));
@@ -288,7 +332,7 @@ void evaluate(vector<pair<int,double> > usedata[USER_N],int u,double &ndcg){
 	ndcg+=dcg/N;
 
 }
-void output_log(FILE* fp,vector<pair<int,double> > usedata[USER_N],int iterN){
+void output_log(FILE* fp,vector<pair<int,double> >* usedata,int iterN){
 	if(fp == NULL)
 		return;
 	double ndcg = 0;
@@ -297,29 +341,31 @@ void output_log(FILE* fp,vector<pair<int,double> > usedata[USER_N],int iterN){
 	if(userCount!=0){
 		ndcg/=userCount;
 		fprintf(fp,"%d iteration, ndcg@10= %.4lf\n",iterN,ndcg);
+		fflush(fp);
 	}
 }
 int main(int argc, char* argv[]){
-	if(argc < 10){
+	if(argc < 5){
 		printf("usage: ./LambdaMF -train [train_data_name] -test [test_data_name] -n [N] -L2 [L2 coefficient] -a [ALPHA] -e [ETA]\n");
 		return 0;
 	}
 	readInput(argc,argv);
-	initialize();	// set random seed here, initialize U,V
+	initial_parameter();
 	
 	printf("reading training data:  %s...",train_filename);	fflush(stdout);
 	readData(train_filename,false);	// encode user here
 	puts(" done");
+	initialize();	// set random seed here, initialize U,V
+
+	/*
 	for(int k=0;k<userCount;k++)
-		for(int m=0;m<data[k].size();m++){
+		for(int m=0;m<data[k].size();m++)
 			itemSeen.insert(data[k][m].first);
-			userSeen[k].insert(data[k][m].first);
-		}
-	//updateModel();	
+	*/
 	printf("reading testing data:  %s...",test_filename);	fflush(stdout);
 	readData(test_filename,true);	// encode user here
 	puts(" done");
-	printf("%d users, %d items\n",userCount,itemSeen.size());
+//	printf("%d users, %d items\n",userCount,itemCount);
 	
 	FILE *trainlog = NULL;
 	FILE *testlog = NULL;
@@ -329,10 +375,12 @@ int main(int argc, char* argv[]){
 	if(test_logfile!=NULL)
 		testlog = fopen(test_logfile,"w");
 	
+	/*
 	vector<int> itemSet;
 	for(set<int>::iterator it = itemSeen.begin();it!=itemSeen.end();++it)
 		itemSet.push_back(*it);	// in order to use O(N) traverse later
-	
+	*/
+
 	output_log(trainlog,data,0);
 	output_log(testlog,testdata,0);
 	
@@ -346,35 +394,44 @@ int main(int argc, char* argv[]){
 		double ndcgTrain = 0;
 		double ndcgTest = 0;
 		
-		if(t%50==0)
+		//if(t%50==0){
+		if(t%50==0 && VERBOSE==0)
 			printf("%d/%d iterations done\n",t,n);
-		//if(t!=0 && t%50==0){
-		if(t==n){
-			time(&end);
-			double seconds = difftime(end,start);
-			printf("training LambdaMF takes %.f seconds\n",seconds);
+		if((VERBOSE==1&&t%50==0)||(VERBOSE==2)){
 			for(int i=0;i<userCount;i++){	// current seen user number equal to userCount, id is encoded
 				evaluate(data,i,ndcgTrain);
 				evaluate(testdata,i,ndcgTest);
 			}
-					
-			if(userCount!=0){
-			//if(t%50==0){
-				ndcgTrain/=userCount;
-				ndcgTest/=userCount;
-				printf("%d iteration, train ndcg@10= %.4lf, test ndcg@10= %.4lf\n",t,ndcgTrain,ndcgTest);
-			}
+			ndcgTrain/=userCount;
+			ndcgTest/=userCount;
+			printf("%d iteration, train ndcg@10= %.4lf, test ndcg@10= %.4lf\n",t,ndcgTrain,ndcgTest);
+			ndcgTrain = 0;
+			ndcgTest = 0;
 		}
+		//if(t!=0 && t%50==0){
+		if(VERBOSE>=0)
+			if(t==n){
+				for(int i=0;i<userCount;i++){	// current seen user number equal to userCount, id is encoded
+					evaluate(data,i,ndcgTrain);
+					evaluate(testdata,i,ndcgTest);
+				}
+				if(userCount!=0){
+					ndcgTrain/=userCount;
+					ndcgTest/=userCount;
+					printf("final result: %d iteration, train ndcg@10= %.4lf, test ndcg@10= %.4lf\n",t,ndcgTrain,ndcgTest);
+				}
+			}
 	}
+	time(&end);
+	double seconds = difftime(end,start);
+	printf("training LambdaMF takes %.f seconds\n",seconds);
 
-	// if want to save the result matrix
-	/*
-	FILE *outfp = fopen("result.ndcg","w");
-	for(int i=0;i<userCount;i++){
-		for(int j=0;j<testdata[i].size();j++)
-			fprintf(outfp,"%d:%f ",testdata[i][j].first,dot(U[i],V[testdata[i][j].first]));
-		fprintf(outfp,"\n");
-	}
-	*/
+	if(predict_fp!=NULL){
+		FILE* origin_fp = fopen(test_filename,"r");
+		int user,item,rating;
+		while(fscanf(origin_fp,"%d%d%d",&user,&item,&rating)!=EOF)
+				fprintf(predict_fp,"%d %d %lf\n",user,item,dot(U[usermap[user]],V[itemmap[item]]));
+	}	
+	
 	return 0;
 }

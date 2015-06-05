@@ -7,15 +7,17 @@ The codes are written using C++, python and shell commands.
 
 Data format should be:(seperated by space)
 
-user1 item1 rating1
+user_id1 item_id1 rating1
 
-user2 item2 rating2
+user_id2 item_id2 rating2
 
 ... ... ...
 
 //////////////////////////////////////////////////
 
-compile and produce dataset:
+compile the code:
+
+	sh compile.sh
 
 download MovieLens100K data here:
 
@@ -33,15 +35,15 @@ place the MovieLens100K dataset(u.data) and Netflix dataset(training_set/) in th
 	mkdir NOlog
 	mkdir log
 
-run experiments of MSE regularization in paper:
+run experiments of MSE regularization in paper(it takes about half day):
 
 	sh run_MSE_experiment.sh	
 
-run experiments of L2 regularization in paper:
+run experiments of L2 regularization in paper(it takes about half day):
 
 	sh run_L2_experiment.sh	
 
-run experiments of NO regularization in paper(only norm reported):
+run experiments of NO regularization in paper(only norm reported in paper)(it takes about half day):
 
 	sh run_no_regularization_experiment.sh	
 
@@ -49,7 +51,7 @@ run experiments of checking the optimization and optimum of LambdaMF with MSE re
 
 	sh test_experiment.sh 
 
-This version stops only if NDCG@10 == 1.0 using C++ internal double precision, so it is more reliable than using the log file. 
+This version (test_experiment.sh) stops only if NDCG@10 == 1.0 using C++ internal double precision, so it is more reliable than using the log file. 
 
 
 All log file of training, testing, model_norm and convergence will be in MSElog/ , L2log/ , NOlog/ and log/
@@ -60,13 +62,25 @@ you can use tail or vim (in linux environment) command to see the result, for ex
 
 general usage:
 
-	./LambdaMF -train [training data] -test [testing data] -e [eta] -L2 [L2 regularization coefficient(optional, default=0)] -n [number of iterations] -a [alpha] -train_logfile [log filename(optional)] -test_logfile [log filename(optional)] -norm [max of model norm log file(optional)]
+	./LambdaMF [Parameter flag] [Parameter value]
 
-If you want to test LambdaMF on other datasets, please set the right USER_N(number of users) and ITEM_N(number of items) in LambdaMF.h and recompile it.
+Legitimate parameter flags/ parameter value:
+
+	-train/ training data filename(string)(necessary)
+	-test	/ testing data filename(string)(necessary)
+	-e		/ eta, learning rate(double)(default=0.001)
+	-L2		/ L2 regularization coefficient(double)(default=0.)
+	-a		/ alpha, MSE regularization coefficient(double)(default=0.5)
+	-n		/ number of iterations(int)(default=250)
+	-D		/	dimension of latent factors(int)(default=100)
+	-predict	/	predict filename on testing data(string)(optional)
+	-VERBOSE	/	verbose levels(-1/0/1/2)(optional)
+	-train_logfile	/	log filename for training data(string)(optional)
+	-test_logfile		/	log filename for testing data(string)(optional)
 
 The parameters used in paper:
 
-MSE regularization: ./LambdaMF -train ... -test ... -a 0.5 -e 0.001 -n 250
+MSE regularization: ./LambdaMF -train [...] -test [...] -a 0.5 -e 0.001 -n 250
 
-L2 regularization: ./LambdaMF -train ... -test ... -a 0. -L2 0.5 -e 0.001 -n 250
+L2 regularization: ./LambdaMF -train [...] -test [...] -a 0. -L2 0.5 -e 0.001 -n 250
 
